@@ -54,3 +54,5 @@ sub list_jobs {
 sub failed_jobs {
 
 }
+
+1;

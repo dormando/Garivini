@@ -203,3 +203,5 @@ sub work {
         sleep $self->{batch_run_sleep};
     }
 }
+
+1;

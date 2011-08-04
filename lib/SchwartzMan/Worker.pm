@@ -45,3 +45,5 @@ sub reschedule_job {
 sub fail_job_permanently {
 
 }
+
+1;

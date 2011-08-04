@@ -66,3 +66,5 @@ sub queue_jobs {
         $queues = check_gearman_queues;
     }
 }
+
+1;
