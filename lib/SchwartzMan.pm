@@ -51,7 +51,7 @@ sub new {
 
     $self->{batch_fetch_limit} = MIN_BATCH_SIZE;
     $self->{batch_run_sleep} = 1;
-    $self->{queue_watermark_depth} = 5; # FIXME: Example :P
+    $self->{queue_watermark_depth} = 4000; # FIXME: Example :P
 
     return $self;
 }
@@ -199,6 +199,7 @@ sub work {
                 unless $self->{batch_fetch_limit} <= MIN_BATCH_SIZE;
         }
 
+        DEBUG && print STDERR "Sent, sleeping\n";
         # Sleep for configured amount of time.
         # TODO: Use the select microsleep hack?
         sleep $self->{batch_run_sleep};

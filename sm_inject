@@ -8,7 +8,7 @@ use lib "$Bin/lib";
 use Getopt::Long;
 use SchwartzMan::Client;
 
-my %o = ();
+my %o = (loops => 1);
 
 # TODO: Doesn't support specifying multiple DB's yet. YAML config or whatever?
 # TODO: Uhh... require a control manager or do our own fork management?
@@ -16,6 +16,7 @@ GetOptions(\%o,
     'dsn=s',
     'username=s',
     'password=s',
+    'loops=i',
     );
 
 die "Need dsn" unless $o{dsn};
@@ -28,5 +29,7 @@ sub run {
         pass => $o{password}, }},
         );
 
-    $client->insert_job(funcname => 'foo', arg => 'hello: ' . time());
+    for (my $i = 0; $i < $o{loops} $i++) {
+        $client->insert_job(funcname => 'foo', arg => 'hello: ' . time());
+    }
 }

@@ -6,6 +6,6 @@ CREATE TABLE `job` (
     `run_after`   INT UNSIGNED NOT NULL,
     `coalesce`    VARCHAR(255) NULL,
     PRIMARY KEY (jobid),
-    INDEX (funcname, run_after),
+    INDEX (run_after),
     UNIQUE (funcname, uniqkey)
 ) ENGINE=InnoDB;
