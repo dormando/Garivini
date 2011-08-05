@@ -33,7 +33,7 @@ sub complete_job {
     # Job should have the dbid buried in the reference.
     my $dbid = $job->{dbid}
         or die "Malformed job missing dbid argument";
-    my $jobid = $job->{id}
+    my $jobid = $job->{jobid}
         or die "Malformed job missing id argument";
     $self->{dbd}->do($dbid, "DELETE FROM job WHERE jobid=?", undef, $jobid);
 }
