@@ -9,12 +9,15 @@ use fields (
             'gearman_sockets',
             'batch_fetch_limit',
             'batch_run_sleep',
+            'queue_watermark_depth',
             );
 
 use Carp qw/croak/;
 use SchwartzMan::DB;
 use Gearman::Client;
 use IO::Socket;
+use JSON;
+use Data::Dumper qw/Dumper/;
 
 # TODO: Make the "job" table name configurable:
 # one dbid creates one connection, which is load balanced against N job tables
@@ -25,6 +28,7 @@ use IO::Socket;
 # size if queue isn't empty.
 use constant MIN_BATCH_SIZE => 50;
 use constant MAX_BATCH_SIZE => 2000;
+use constant DEBUG => 1;
 
 sub new {
     my SchwartzMan $self = shift;
@@ -35,7 +39,6 @@ sub new {
     # list of databases (dbid/dsn/user/pass)
 
     $self->{job_servers}     = {};
-    $self->{funcmap_cache}   = {};
     # Gross direct socket connections until Gearman::Client gives us a way to
     # get queue status information more efficiently.
     $self->{gearman_sockets} = {};
@@ -48,6 +51,7 @@ sub new {
 
     $self->{batch_fetch_limit} = MIN_BATCH_SIZE;
     $self->{batch_run_sleep} = 1;
+    $self->{queue_watermark_depth} = 5; # FIXME: Example :P
 
     return $self;
 }
@@ -74,20 +78,19 @@ sub _find_jobs_for_gearman {
             $dbid AS dbid
             FROM job
             WHERE run_after <= UNIX_TIMESTAMP()
-            ORDER BY nexttry
+            ORDER BY run_after
             LIMIT $limit
             FOR UPDATE
         };
         my $sth = $dbh->prepare($query);
         $sth->execute;
         $work = $sth->fetchall_hashref('jobid');
-
         # Claim the jobids for a while
         # TODO: time adjustment should be configurable
         my $idlist = join(',', keys %$work);
         # Nothing to do
         unless ($idlist) { $dbh->commit; return; }
-        $dbh->do("UPDATE job SET nexttry = UNIX_TIMESTAMP() + 1000 "
+        $dbh->do("UPDATE job SET run_after = UNIX_TIMESTAMP() + 1000 "
             . "WHERE jobid IN ($idlist)");
         $dbh->commit;
     };
@@ -96,6 +99,7 @@ sub _find_jobs_for_gearman {
     # TODO: Make sure get_dbh is validating, or set a flag here on error which
     # triggers get_dbh to run a $dbh->ping next time.
     if ($@) {
+        DEBUG && print STDERR "DB Error pulling from queue: $@";
         eval { $dbh->rollback };
         return ();
     }
@@ -107,12 +111,12 @@ sub _find_jobs_for_gearman {
 # Look for any functions which are low enough in queue to get more injections.
 sub _check_gearman_queues {
     my $self    = shift;
-    my @servers = $self->{job_servers};
+    my $servers = $self->{job_servers};
     my $socks   = $self->{gearman_sockets};
     my %queues  = ();
 
     # Bleh. nasty IO::Socket code to connect to the gearmand's and run "status".
-    for my $server (@servers) {
+    for my $server (@$servers) {
         my $sock = $socks->{$server} || undef;
         unless ($sock) {
             $sock = IO::Socket::INET->new(PeerAddr => $server,
@@ -125,10 +129,9 @@ sub _check_gearman_queues {
 
             while (my $line = <$sock>) {
                 chomp $line;
-                # TODO: I don't know what the status line looks like offhand
-                # :P
-                $queues{'func'} += 0;   
                 last if $line =~ m/^\./;
+                my @fields = split(/\s+/, $line);
+                $queues{$fields[0]} += $fields[1];
             }
         };
         if ($@) {
@@ -155,8 +158,7 @@ sub _send_jobs_to_gearman {
 
     # TODO: Need to pass uniq in properly?
     for my $job (@$jobs) {
-        # TODO: Must serialize the job first; JSON?
-        $client->dispatch_background($job->{funcname}, $job->{arg}, {});
+        $client->dispatch_background($job->{funcname}, \encode_json($job), {});
     }
 }
 
@@ -168,6 +170,7 @@ sub _send_jobs_to_gearman {
 
 # This isn't your typical worker, as in it doesn't register as a gearman
 # worker at all. It's a sideways client.
+# TODO; split into work/work_once ?
 sub work {
     my $self = shift;
 
@@ -175,27 +178,25 @@ sub work {
         my $queues = $self->_check_gearman_queues;
         my $work = $self->_find_jobs_for_gearman($self->{batch_fetch_limit});
         my $work_count = scalar keys %$work;
+        DEBUG && print STDERR "Pulled $work_count new jobs from DB\n";
 
         # Filter jobs that should not be run
         my @jobs_tosend = ();
         for my $job (values %$work) {
             my $queue = $queues->{$job->{funcname}};
-            next if ($queue > $self->{queue_watermark_depth})
+            next if ($queue && $queue > $self->{queue_watermark_depth});
             push(@jobs_tosend, $job);
         }
 
-        # Send jobs to gearman
+        DEBUG && print STDERR "Sending ", scalar @jobs_tosend, " jobs to gearmand\n";
         $self->_send_jobs_to_gearman(\@jobs_tosend);
 
-        # TODO:
-        # Apply scaling algorithm: If gearman queues could use more work, and
-        # $limit objects are found during fetch, and any gearmand queues can allow
-        # more work, increase limit toward max.
-        # if $limit objects are not found during fetch, slowly decrease limit
-        # toward minimum
         if ($work_count >= $self->{batch_fetch_limit}) {
             $self->{batch_fetch_limit} += 10
-                unless $self->{batch_fetch_limit} >= MAX_FETCH_SIZE;
+                unless $self->{batch_fetch_limit} >= MAX_BATCH_SIZE;
+        } else {
+            $self->{batch_fetch_limit} -= 10
+                unless $self->{batch_fetch_limit} <= MIN_BATCH_SIZE;
         }
 
         # Sleep for configured amount of time.

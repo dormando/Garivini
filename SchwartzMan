@@ -1,0 +1,34 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use FindBin '$Bin';
+use lib "$Bin/lib";
+use Getopt::Long;
+use SchwartzMan;
+
+my %o = ();
+
+# TODO: Doesn't support specifying multiple DB's yet. YAML config or whatever?
+# TODO: Uhh... require a control manager or do our own fork management?
+GetOptions(\%o,
+    'gearmand=s@',
+    'dsn=s',
+    'username=s',
+    'password=s',
+    );
+
+die "Need dsn" unless $o{dsn};
+die "Need gearman servers" unless $o{gearmand};
+
+run();
+
+sub run {
+    my $SM = SchwartzMan->new(job_servers => $o{gearmand},
+        dbs => {1 => { id => 1, dsn => $o{dsn}, user => $o{username},
+        pass => $o{password}, }},
+        );
+
+    $SM->work;
+}

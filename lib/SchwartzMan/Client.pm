@@ -1,4 +1,4 @@
-package SchwartzMan::Client
+package SchwartzMan::Client;
 
 use strict;
 use warnings;
@@ -17,11 +17,13 @@ sub new {
     my %args = @_;
 
     $self->{dbd} = SchwartzMan::DB->new(%args);
+
+    return $self;
 }
 
 # Very bland DBI call.
 # dbid => send to a specific DB (remove this? seems dangerous)
-# job  => { function => $name,
+# job  => { funcname => $name,
 #           run_after => $timestamp, (optional, defaults to UNIX_TIMESTAMP())
 #           unique => $unique, (string)
 #           coalesce => $key, (coalesce key, like the e-mail domain)
@@ -31,13 +33,15 @@ sub new {
 sub insert_job {
     my $self = shift;
     my %args = @_;
-    $args{unique}    = 'NULL' unless $args{unique};
-    $args{coalesce}  = 'NULL' unless $args{coalesce};
-    $args{run_after} = 'UNIX_TIMESTAMP()' unless $args{run_after};
+    $args{unique}    = undef unless $args{unique};
+    $args{coalesce}  = undef unless $args{coalesce};
+    # FIXME: Verify $run_after as an argument, or else we have an injection
+    # issue.
+    my $run_after = 'UNIX_TIMESTAMP()' unless $args{run_after};
     $self->{dbd}->do(undef,
         "INSERT INTO job (funcname, run_after, uniqkey, coalesce, arg) "
-        . "VALUES (?, ?, ?, ?, ?)", undef,
-        @arg{'funcname', 'run_after', 'unique', 'coalesce', 'arg'});
+        . "VALUES (?, $run_after, ?, ?, ?)", undef,
+        @args{'funcname', 'unique', 'coalesce', 'arg'});
 }
 
 # Just in case?

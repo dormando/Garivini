@@ -17,6 +17,8 @@ sub new {
     my %args = @_;
 
     $self->{dbd} = SchwartzMan::DB->new(%args);
+
+    return $self;
 }
 
 # On job complete or failure, calls one of these:

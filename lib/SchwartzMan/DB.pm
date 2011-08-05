@@ -23,6 +23,8 @@ sub new {
     # TODO: Configuration verification!
     $self->{db_config} = $args{dbs};
     $self->{db_avoid}  = {};
+
+    return $self;
 }
 
 # Avoid DB's that are down for a while.
@@ -41,7 +43,7 @@ sub get_dbh {
         $dbs[0] = $self->{db_config}{$dbid}
             or die "Uknown database id $dbid";
     } else {
-        @dbs = keys %{$self->{db_config}};
+        @dbs = values %{$self->{db_config}};
         @dbs = shuffle(@dbs);
     }
 
@@ -55,7 +57,8 @@ sub get_dbh {
 sub _db_connect {
     my $self = shift;
     my $db   = shift;
-    return undef if $self->{db_avoid}{$db->{id}} > time();
+    return undef if exists $self->{db_avoid}{$db->{id}} &&
+        $self->{db_avoid}{$db->{id}} > time();
     return $self->{dbh_cache}{$db->{id}}
         if exists $self->{dbh_cache}{$db->{id}};
 
@@ -64,7 +67,7 @@ sub _db_connect {
     if ($dbh) {
         $self->{dbh_cache}{$db->{id}} = $dbh;
     } else {
-        $self->{db_avoid}{$db->{id}} = time() + RETRY_DEFAULT;
+        $self->{db_avoid}{$db->{id}} = time() + DB_RETRY_DEFAULT;
     }
     return $dbh;
 }
@@ -75,7 +78,8 @@ sub do {
     my $sql  = shift;
     my @params = @_;
 
-    my ($dbh, $dbid) = $self->get_dbh(dbid => $args{dbid});
+    my $dbh;
+    ($dbh, $dbid) = $self->get_dbh($dbid);
     my $return = eval {
         $dbh->do($sql, @params);
     };

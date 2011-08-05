@@ -1,0 +1,32 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use FindBin '$Bin';
+use lib "$Bin/lib";
+use Getopt::Long;
+use SchwartzMan::Client;
+
+my %o = ();
+
+# TODO: Doesn't support specifying multiple DB's yet. YAML config or whatever?
+# TODO: Uhh... require a control manager or do our own fork management?
+GetOptions(\%o,
+    'dsn=s',
+    'username=s',
+    'password=s',
+    );
+
+die "Need dsn" unless $o{dsn};
+
+run();
+
+sub run {
+    my $client = SchwartzMan::Client->new(
+        dbs => {1 => { id => 1, dsn => $o{dsn}, user => $o{username},
+        pass => $o{password}, }},
+        );
+
+    $client->insert_job(funcname => 'foo', arg => 'hello: ' . time());
+}
