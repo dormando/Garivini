@@ -29,7 +29,7 @@ sub run {
         pass => $o{password}, }},
         );
 
-    for (my $i = 0; $i < $o{loops} $i++) {
+    for (my $i = 0; $i < $o{loops}; $i++) {
         $client->insert_job(funcname => 'foo', arg => 'hello: ' . time());
     }
 }

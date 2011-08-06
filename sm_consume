@@ -24,6 +24,7 @@ GetOptions(\%o,
 die "Need dsn" unless $o{dsn};
 
 my $work_helper;
+my $count = 0;
 run();
 
 sub run {
@@ -40,6 +41,6 @@ sub run {
 
 sub consume_thing {
     my $job = decode_json(${$_[0]->argref});
-    print "Hay it's a job: ", $job->{arg}, "\n";
+    print "Hay it's a job: ", $job->{arg}, "\n" if $count++ % 100 == 0;
     $work_helper->complete_job($job);
 }

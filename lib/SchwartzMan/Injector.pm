@@ -9,12 +9,10 @@ use Gearman::Worker;
 use Gearman::Client;
 use JSON;
 
-use constant GEARMAN_QUEUE_CHECK => 5;
-use constant GEARMAN_QUEUE_SIZE_MAX => 2000; # shouldn't be a constant.
-# TODO: Load config from somewhere.
-# Or turn into a full object so somethign else can fire it off, but that's a
-# little self defeating?
-
+use fields (
+            'job_servers',
+            
+           );
 my $job_servers = [];
 my $sm_client;
 my $gm_client;

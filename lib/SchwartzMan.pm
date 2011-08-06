@@ -58,19 +58,16 @@ sub new {
 
 # Blindly pull jobs that are due up out of the database, to inject into
 # gearmand.
-# Use the MogileFS model: SELECT ... FOR UPDATE; UPDATE (etc); COMMIT;
-# NOTE: May have to cycle/alternate by funcid?
-# *should* actually be fine if we strictly order the SELECT by run_after.
 sub _find_jobs_for_gearman {
-    my $self  = shift;
-    my $limit = shift;
+    my $self   = shift;
+    my $limit  = shift;
+    my $queues = shift;
 
     # Fetch this round from a random queue.
     my ($dbh, $dbid) = $self->{dbd}->get_dbh();
-    my $work;
+    my @joblist = ();
+    my $pulled  = 0;
 
-    # TODO: Split into two UPDATE's, filtered by which queues are too full for
-    # more jobs.
     eval {
         $dbh->begin_work;
         my $query = qq{
@@ -84,14 +81,29 @@ sub _find_jobs_for_gearman {
         };
         my $sth = $dbh->prepare($query);
         $sth->execute;
-        $work = $sth->fetchall_hashref('jobid');
+        my $work = $sth->fetchall_hashref('jobid');
         # Claim the jobids for a while
+        @joblist     = ();
+        my @skiplist = ();
+        # If queue is full, don't skip run_after as far
+        for my $work (values %$work) {
+            $pulled++;
+            if (exists $queues->{$work->{funcname}}
+                && $queues->{$work->{funcname}} >
+                $self->{queue_watermark_depth}) {
+                push(@skiplist, $work->{jobid});
+            } else {
+                push(@joblist, $work);
+            }
+        }
+        my $idlist   = join(',', map { $_->{jobid} }  @joblist);
+        my $skiplist = join(',', @skiplist);
+
         # TODO: time adjustment should be configurable
-        my $idlist = join(',', keys %$work);
-        # Nothing to do
-        unless ($idlist) { $dbh->commit; return; }
         $dbh->do("UPDATE job SET run_after = UNIX_TIMESTAMP() + 1000 "
-            . "WHERE jobid IN ($idlist)");
+            . "WHERE jobid IN ($idlist)") if $idlist;
+        $dbh->do("UPDATE job SET run_after = UNIX_TIMESTAMP() + 60 "
+            . "WHERE jobid IN ($skiplist)") if $skiplist;
         $dbh->commit;
     };
     # Doesn't really matter what the failure is. Deadlock? We'll try again
@@ -104,7 +116,7 @@ sub _find_jobs_for_gearman {
         return ();
     }
 
-    return $work;
+    return (\@joblist, $pulled);
 }
 
 # Fetch gearmand status (or is there a better command?)
@@ -146,10 +158,6 @@ sub _check_gearman_queues {
 # Send all jobs via background tasks.
 # We don't care about the response codes, as we rely on the gearman workers to
 # issue the database delete.
-# Alternate design could have this worker create a taskset and wait on the
-# taskset; tradeoff would be pretty painful though, as we can't necessarily
-# inject more jobs into gearmand from this worker until all the previous jobs
-# are done processing.
 sub _send_jobs_to_gearman {
     my $self = shift;
     my $jobs = shift;
@@ -162,12 +170,6 @@ sub _send_jobs_to_gearman {
     }
 }
 
-# The above should be most of what's required.
-# Jobs should be extremely simple; allow clients the option to log errors
-# somewhere, but they really should be using other logging facilities.
-# Just drop all of the schwartz's job complexity on the floor since I'm sure
-# most of it didn't work very well anyway.
-
 # This isn't your typical worker, as in it doesn't register as a gearman
 # worker at all. It's a sideways client.
 # TODO; split into work/work_once ?
@@ -176,27 +178,21 @@ sub work {
 
     while (1) {
         my $queues = $self->_check_gearman_queues;
-        my $work = $self->_find_jobs_for_gearman($self->{batch_fetch_limit});
-        my $work_count = scalar keys %$work;
-        DEBUG && print STDERR "Pulled $work_count new jobs from DB\n";
+        my ($jobs, $pulled) = $self->_find_jobs_for_gearman($self->{batch_fetch_limit},
+            $queues);
+        my $job_count = scalar @$jobs;
+        DEBUG && print STDERR "Pulled $pulled new jobs from DB\n";
+        DEBUG && print STDERR "Sending $job_count jobs to gearmand\n";
+        $self->_send_jobs_to_gearman($jobs);
 
-        # Filter jobs that should not be run
-        my @jobs_tosend = ();
-        for my $job (values %$work) {
-            my $queue = $queues->{$job->{funcname}};
-            next if ($queue && $queue > $self->{queue_watermark_depth});
-            push(@jobs_tosend, $job);
-        }
-
-        DEBUG && print STDERR "Sending ", scalar @jobs_tosend, " jobs to gearmand\n";
-        $self->_send_jobs_to_gearman(\@jobs_tosend);
-
-        if ($work_count >= $self->{batch_fetch_limit}) {
-            $self->{batch_fetch_limit} += 10
-                unless $self->{batch_fetch_limit} >= MAX_BATCH_SIZE;
+        if ($job_count >= $self->{batch_fetch_limit}) {
+            $self->{batch_fetch_limit} += (MAX_BATCH_SIZE * 0.1);
+            $self->{batch_fetch_limit} = MAX_BATCH_SIZE
+                if $self->{batch_fetch_limit} >= MAX_BATCH_SIZE;
         } else {
-            $self->{batch_fetch_limit} -= 10
-                unless $self->{batch_fetch_limit} <= MIN_BATCH_SIZE;
+            $self->{batch_fetch_limit} -= (MAX_BATCH_SIZE * 0.05);
+            $self->{batch_fetch_limit} = MIN_BATCH_SIZE
+                if $self->{batch_fetch_limit} <= MIN_BATCH_SIZE;
         }
 
         DEBUG && print STDERR "Sent, sleeping\n";
