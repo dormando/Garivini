@@ -6,7 +6,7 @@ use warnings;
 use FindBin '$Bin';
 use lib "$Bin/lib";
 use Getopt::Long;
-use SchwartzMan::Worker;
+use SchwartzMan::Client;
 use Gearman::Worker;
 use JSON;
 
@@ -23,12 +23,12 @@ GetOptions(\%o,
 
 die "Need dsn" unless $o{dsn};
 
-my $work_helper;
+my $sm_client;
 my $count = 0;
 run();
 
 sub run {
-    $work_helper = SchwartzMan::Worker->new(
+    $sm_client = SchwartzMan::Client->new(
         dbs => {1 => { id => 1, dsn => $o{dsn}, user => $o{username},
         pass => $o{password}, }},
         );
@@ -42,5 +42,5 @@ sub run {
 sub consume_thing {
     my $job = decode_json(${$_[0]->argref});
     print "Hay it's a job: ", $job->{arg}, "\n" if $count++ % 100 == 0;
-    $work_helper->complete_job($job);
+    $sm_client->complete_job($job);
 }

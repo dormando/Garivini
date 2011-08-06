@@ -27,20 +27,18 @@ sub new {
 
     $self->{sm_client} = SchwartzMan::Client->new(%args);
     $self->{gm_client} = Gearman::Client->new(
-        job_servers => $job_servers);
+        job_servers => $self->{job_servers});
     $self->{last_queue_check} = 0;
     $self->{queues} = {};
     $self->{queue_watermark_depth} = 4000; # TODO: Make configurable
+
+    return $self;
 }
 
-# TODO: Think I'm still missing a part where the original job function is
-# cuddled into the gearman job arguments somehow. Figure this out?
 sub work {
-    my %args = @_;
-
     my $worker = Gearman::Worker->new(job_servers => $self->{job_servers});
-    $worker->register_function('SchwartzMan::Injector' => sub {
-        $self->queue_jobs
+    $worker->register_function(inject_jobs => sub {
+        $self->inject_jobs
     });
     $worker->work while 1; # redundant.
 }
@@ -48,7 +46,7 @@ sub work {
 # For bonus points, submit jobs in this method with a run_after noted as
 # "locked", so the client code can pre-adjust it and not be forced to
 # re-encode.
-sub queue_jobs {
+sub inject_jobs {
     my $self = shift;
     my $job  = shift;
 
@@ -69,7 +67,8 @@ sub queue_jobs {
 
     if ($run_job) {
         # TODO: Submit uniq properly.
-        $self->{gm_client}->dispatch_background($args->{funcname}, \encode_json($args), {});
+        $self->{gm_client}->dispatch_background('run_queued_job',
+            \encode_json($args), {});
     }
 
     if ($last_queue_check < time() - 60) {
@@ -80,7 +79,7 @@ sub queue_jobs {
 # TODO: Copy/paste code from SchwartzMan.pm until Gearman::Client has a thing
 # for this.
 sub check_gearman_queues {
-
+    return {};
 }
 
 1;

@@ -59,4 +59,29 @@ sub failed_jobs {
 
 }
 
+# On job complete or failure, call one of these:
+
+# Takes a job handle, issues a DELETE against the database directly.
+sub complete_job {
+    my $self = shift;
+    my $job  = shift;
+
+    # Job should have the dbid buried in the reference.
+    my $dbid = $job->{dbid}
+        or die "Malformed job missing dbid argument";
+    my $jobid = $job->{jobid}
+        or die "Malformed job missing id argument";
+    $self->{dbd}->do($dbid, "DELETE FROM job WHERE jobid=?", undef, $jobid);
+}
+
+# Bump the run_after in some specific way (relative, absolute, etc)
+sub reschedule_job {
+
+}
+
+# Reschedule for ENDOFTIME
+sub fail_job_permanently {
+
+}
+
 1;
