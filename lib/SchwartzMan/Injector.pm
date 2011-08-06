@@ -11,26 +11,37 @@ use JSON;
 
 use fields (
             'job_servers',
-            
+            'sm_client',
+            'gm_client',
+            'last_queue_check',
+            'queues', 
+            'queue_watermark_depth',
            );
-my $job_servers = [];
-my $sm_client;
-my $gm_client;
-my $json;
-my $last_queue_check = 0;
-my $queues = {};
 
-sub init {
+sub new {
+    my SchwartzMan::Injector $self = shift;
+    $self = fields::new($self) unless ref $self;
     my %args = @_;
-    $job_servers = delete $args{job_servers};
 
-    $sm_client = SchwartzMan::Client->new(%args);
-    $gm_client = Gearman::Client->new(
+    $self->{job_servers} = delete $args{job_servers};
+
+    $self->{sm_client} = SchwartzMan::Client->new(%args);
+    $self->{gm_client} = Gearman::Client->new(
         job_servers => $job_servers);
-    $json      = JSON->new->allow_nonref;
+    $self->{last_queue_check} = 0;
+    $self->{queues} = {};
+    $self->{queue_watermark_depth} = 4000; # TODO: Make configurable
+}
 
-    my $worker = Gearman::Worker->new(job_servers => $job_servers);
-    $worker->register_function('SchwartzMan::Injector' => \&queue_jobs);
+# TODO: Think I'm still missing a part where the original job function is
+# cuddled into the gearman job arguments somehow. Figure this out?
+sub work {
+    my %args = @_;
+
+    my $worker = Gearman::Worker->new(job_servers => $self->{job_servers});
+    $worker->register_function('SchwartzMan::Injector' => sub {
+        $self->queue_jobs
+    });
     $worker->work while 1; # redundant.
 }
 
@@ -38,12 +49,14 @@ sub init {
 # "locked", so the client code can pre-adjust it and not be forced to
 # re-encode.
 sub queue_jobs {
-    my $job = shift;
+    my $self = shift;
+    my $job  = shift;
 
-    my $args = $json->decode(${$job->argref});
+    my $queues = $self->{queues};
+    my $args = decode_json(${$job->argref});
     my $run_job = 1;
     if ($queues->{$args->{funcname}} && $queues->{$args->{funcname}} >
-        GEARMAN_QUEUE_SIZE_MAX) {
+        $self->{queue_watermark_depth}) {
         $run_job = 0;
     }
 
@@ -52,17 +65,22 @@ sub queue_jobs {
     $args->{run_after} = $run_job && exists $args->{run_after} ? $args->{run_after}
         : 'UNIX_TIMESTAMP() + 1000'; # Sick, don't do this directly, here.
 
-    $sm_client->insert_job($args);
+    $self->{sm_client}->insert_job($args);
 
     if ($run_job) {
-        my $new_job = $json->encode($args);
         # TODO: Submit uniq properly.
-        $gm_client->dispatch_background($args->{funcname}, $new_job, {});
+        $self->{gm_client}->dispatch_background($args->{funcname}, \encode_json($args), {});
     }
 
     if ($last_queue_check < time() - 60) {
-        $queues = check_gearman_queues;
+        $self->{queues} = $self->check_gearman_queues;
     }
+}
+
+# TODO: Copy/paste code from SchwartzMan.pm until Gearman::Client has a thing
+# for this.
+sub check_gearman_queues {
+
 }
 
 1;
