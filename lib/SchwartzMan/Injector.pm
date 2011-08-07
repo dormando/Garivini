@@ -36,6 +36,7 @@ sub new {
 }
 
 sub work {
+    my $self = shift;
     my $worker = Gearman::Worker->new(job_servers => $self->{job_servers});
     $worker->register_function(inject_jobs => sub {
         $self->inject_jobs
@@ -63,8 +64,9 @@ sub inject_jobs {
     $args->{run_after} = $run_job && exists $args->{run_after} ? $args->{run_after}
         : 'UNIX_TIMESTAMP() + 1000'; # Sick, don't do this directly, here.
 
-    $self->{sm_client}->insert_job($args);
+    my $jobid = $self->{sm_client}->insert_job($args);
 
+    $args->{jobid} = $jobid;
     if ($run_job) {
         # TODO: Submit uniq properly.
         $self->{gm_client}->dispatch_background('run_queued_job',

@@ -42,6 +42,7 @@ sub insert_job {
         "INSERT INTO job (funcname, run_after, uniqkey, coalesce, arg) "
         . "VALUES (?, $run_after, ?, ?, ?)", undef,
         @args{'funcname', 'unique', 'coalesce', 'arg'});
+    return $dbh->last_insert_id(undef, undef, undef, undef);
 }
 
 # Just in case?

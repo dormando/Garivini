@@ -29,6 +29,7 @@ sub new {
 }
 
 sub work {
+    my $self = shift;
     my $worker = Gearman::Worker->new(job_servers => $self->{job_servers});
     $worker->register_function('run_queued_job' => sub {
         $self->run_queued_job;
