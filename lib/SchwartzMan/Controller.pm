@@ -33,7 +33,7 @@ sub work {
     my $self = shift;
     my $worker = Gearman::Worker->new(job_servers => $self->{job_servers});
     $worker->register_function('run_queued_job' => sub {
-        $self->run_queued_job;
+        $self->run_queued_job(@_);
     });
     $worker->work while 1; # redundant.
 }
@@ -51,7 +51,7 @@ sub run_queued_job {
     # NOTE: This passes the full job around, instead of initially passing a
     # handle and SELECT'ing it back from the DB here. Need to ensure this is
     # worth the tradeoff.
-    my $res = $gm_client->do_task($sm_job->{funcname}, $gm_job->argref);
+    my $res = $gm_client->do_task($sm_job->{funcname}, $gm_job->arg);
     DEBUG && warn "Gearman do_task result is $res\n";
 
     if (defined $res) {
@@ -61,6 +61,8 @@ sub run_queued_job {
         # when it's permanently dead?
         $sm_client->reschedule_job($sm_job);
     }
+
+    return;
 }
 
 1;

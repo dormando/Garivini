@@ -19,6 +19,7 @@ GetOptions(\%o,
     'dsn=s',
     'username=s',
     'password=s',
+    'pure',
     );
 
 die "Need dsn" unless $o{dsn};
@@ -41,6 +42,11 @@ sub run {
 
 sub consume_thing {
     my $job = decode_json(${$_[0]->argref});
-    print "Hay it's a job: ", $job->{arg}, "\n" if $count++ % 100 == 0;
-    $sm_client->complete_job($job);
+    #print "Hay it's a job: ", $job->{arg}, "\n" if $count++ % 100 == 0;
+    print "Hay it's a job: ", $job->{arg}, "\n";
+    # If we're running in "pure gearman" mode, let the remote ControllerWorker
+    # complete the job.
+    unless ($o{pure}) {
+        $sm_client->complete_job($job);
+    }
 }

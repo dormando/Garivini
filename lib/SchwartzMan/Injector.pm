@@ -8,6 +8,7 @@ use SchwartzMan::Client;
 use Gearman::Worker;
 use Gearman::Client;
 use JSON;
+use Data::Dumper qw/Dumper/;
 
 use fields (
             'job_servers',
@@ -39,7 +40,7 @@ sub work {
     my $self = shift;
     my $worker = Gearman::Worker->new(job_servers => $self->{job_servers});
     $worker->register_function(inject_jobs => sub {
-        $self->inject_jobs
+        $self->inject_jobs(@_);
     });
     $worker->work while 1; # redundant.
 }
@@ -61,12 +62,12 @@ sub inject_jobs {
 
     # TODO: Uhh if $job->{arg} was a cuddled JSON blob, did this just decode
     # that? Easy enough to test and fix, but I'm tired :P
-    $args->{run_after} = $run_job && exists $args->{run_after} ? $args->{run_after}
+    $args->{run_after} = ($run_job && exists $args->{run_after}) ? $args->{run_after}
         : 'UNIX_TIMESTAMP() + 1000'; # Sick, don't do this directly, here.
-
-    my $jobid = $self->{sm_client}->insert_job($args);
+    my ($jobid, $dbid) = $self->{sm_client}->insert_job(%$args);
 
     $args->{jobid} = $jobid;
+    $args->{dbid}  = $dbid;
     if ($run_job) {
         # TODO: Submit uniq properly.
         $self->{gm_client}->dispatch_background('run_queued_job',
@@ -77,6 +78,8 @@ sub inject_jobs {
         $self->{last_queue_check} = time();
         $self->{queues} = $self->check_gearman_queues;
     }
+
+    return;
 }
 
 # TODO: Copy/paste code from SchwartzMan.pm until Gearman::Client has a thing

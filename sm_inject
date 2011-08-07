@@ -7,16 +7,19 @@ use FindBin '$Bin';
 use lib "$Bin/lib";
 use Getopt::Long;
 use SchwartzMan::Client;
+use Gearman::Client;
+use JSON;
 
 my %o = (loops => 1);
 
 # TODO: Doesn't support specifying multiple DB's yet. YAML config or whatever?
-# TODO: Uhh... require a control manager or do our own fork management?
 GetOptions(\%o,
     'dsn=s',
     'username=s',
     'password=s',
     'loops=i',
+    'pure',
+    'gearmand=s@',
     );
 
 die "Need dsn" unless $o{dsn};
@@ -24,12 +27,23 @@ die "Need dsn" unless $o{dsn};
 run();
 
 sub run {
-    my $client = SchwartzMan::Client->new(
+    my $sm_client = SchwartzMan::Client->new(
         dbs => {1 => { id => 1, dsn => $o{dsn}, user => $o{username},
         pass => $o{password}, }},
         );
+    my $gm_client = Gearman::Client->new;
+    my $job = {
+        funcname => 'foo',
+    };
 
     for (my $i = 0; $i < $o{loops}; $i++) {
-        $client->insert_job(funcname => 'foo', arg => 'hello: ' . time());
+        if ($o{pure}) {
+            $gm_client->job_servers(@{$o{gearmand}});
+            $job->{arg} = 'hello: ' . time();
+            $gm_client->dispatch_background('inject_jobs', \encode_json($job),
+                {});
+        } else {
+            $sm_client->insert_job(funcname => 'foo', arg => 'hello: ' . time());
+        }
     }
 }
