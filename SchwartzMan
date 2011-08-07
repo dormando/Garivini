@@ -6,9 +6,8 @@ use warnings;
 use FindBin '$Bin';
 use lib "$Bin/lib";
 use Getopt::Long;
-use SchwartzMan;
 
-my %o = ();
+my %o = (roles => 'QueueRunner');
 
 # TODO: Doesn't support specifying multiple DB's yet. YAML config or whatever?
 # TODO: Uhh... require a control manager or do our own fork management?
@@ -17,18 +16,39 @@ GetOptions(\%o,
     'dsn=s',
     'username=s',
     'password=s',
+    'roles=s', # QueueRunner, Injector, Controller
     );
 
 die "Need dsn" unless $o{dsn};
 die "Need gearman servers" unless $o{gearmand};
 
-run();
+my @roles = split(/,/, $o{roles});
+
+my @children = ();
+my $primary_role = shift @roles;
+for my $role (@roles) {
+    my $pid = fork;
+    die "Fork failed: $_" unless defined $pid;
+    if ($pid) {
+        push(@children, $pid);
+    } else {
+        @children = ();
+        run($role);
+        exit;
+    }
+}
+
+$SIG{INT} = $SIG{TERM} = sub { kill INT => @children; exit };
+run($primary_role);
 
 sub run {
-    my $SM = SchwartzMan->new(job_servers => $o{gearmand},
+    my $role = shift;
+    my $class = 'SchwartzMan::' . $role;
+    eval "use $class; 1" or die $@;
+    my $worker = $class->new(job_servers => $o{gearmand},
         dbs => {1 => { id => 1, dsn => $o{dsn}, user => $o{username},
         pass => $o{password}, }},
         );
 
-    $SM->work;
+    $worker->work;
 }

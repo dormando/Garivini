@@ -88,7 +88,7 @@ sub do {
         delete $self->{dbh_cache}{$dbid};
         die $@;
     } else {
-        return $return;
+        return ($return, $dbh, $dbid);
     }
 }
 

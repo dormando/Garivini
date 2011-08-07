@@ -1,4 +1,4 @@
-package SchwartzMan;
+package SchwartzMan::QueueRunner;
 use strict;
 use warnings;
 
@@ -31,12 +31,9 @@ use constant MAX_BATCH_SIZE => 2000;
 use constant DEBUG => 1;
 
 sub new {
-    my SchwartzMan $self = shift;
+    my SchwartzMan::QueueRunner $self = shift;
     $self = fields::new($self) unless ref $self;
     my %args = @_;
-
-    # pull in options:
-    # list of databases (dbid/dsn/user/pass)
 
     $self->{job_servers}     = {};
     # Gross direct socket connections until Gearman::Client gives us a way to

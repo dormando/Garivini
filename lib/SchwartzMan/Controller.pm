@@ -5,6 +5,7 @@ use warnings;
 use fields ('dbd',
             'sm_client',
             'gm_client',
+            'job_servers',
            );
 
 use SchwartzMan::DB;

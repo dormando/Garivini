@@ -38,7 +38,7 @@ sub insert_job {
     # FIXME: Verify $run_after as an argument, or else we have an injection
     # issue.
     my $run_after = 'UNIX_TIMESTAMP()' unless $args{run_after};
-    $self->{dbd}->do(undef,
+    my ($ret, $dbh, $dbid) = $self->{dbd}->do(undef,
         "INSERT INTO job (funcname, run_after, uniqkey, coalesce, arg) "
         . "VALUES (?, $run_after, ?, ?, ?)", undef,
         @args{'funcname', 'unique', 'coalesce', 'arg'});

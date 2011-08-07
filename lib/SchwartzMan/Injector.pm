@@ -73,7 +73,8 @@ sub inject_jobs {
             \encode_json($args), {});
     }
 
-    if ($last_queue_check < time() - 60) {
+    if ($self->{last_queue_check} < time() - 60) {
+        $self->{last_queue_check} = time();
         $self->{queues} = $self->check_gearman_queues;
     }
 }
