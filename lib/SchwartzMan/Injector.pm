@@ -64,6 +64,7 @@ sub inject_jobs {
     # that? Easy enough to test and fix, but I'm tired :P
     $args->{run_after} = ($run_job && exists $args->{run_after}) ? $args->{run_after}
         : 'UNIX_TIMESTAMP() + 1000'; # Sick, don't do this directly, here.
+    $args->{flag} = 'controller';
     my ($jobid, $dbid) = $self->{sm_client}->insert_job(%$args);
 
     $args->{jobid} = $jobid;

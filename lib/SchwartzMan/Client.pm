@@ -29,25 +29,24 @@ sub new {
 #           coalesce => $key, (coalesce key, like the e-mail domain)
 #           arg => $blob, (serialized blob)
 #         };
-# TODO: Is there value in returning the jobid? If so, adding it won't be hard.
+# 'flag' can be 'shim' (default), or 'controller'
+# 'shim' tells the QueueRunner that the worker is responsible for removing the
+# job from the database upon completion.
+# 'controller' tells it to inject the job through a controller worker.
 sub insert_job {
     my $self = shift;
     my %args = @_;
     $args{unique}    = undef unless $args{unique};
     $args{coalesce}  = undef unless $args{coalesce};
+    $args{flag}      = undef unless $args{flag};
     # FIXME: Verify $run_after as an argument, or else we have an injection
     # issue.
     my $run_after = $args{run_after} || 'UNIX_TIMESTAMP()';
     my ($ret, $dbh, $dbid) = $self->{dbd}->do(undef,
-        "INSERT INTO job (funcname, run_after, uniqkey, coalesce, arg) "
-        . "VALUES (?, $run_after, ?, ?, ?)", undef,
-        @args{'funcname', 'unique', 'coalesce', 'arg'});
+        "INSERT INTO job (funcname, run_after, uniqkey, coalesce, arg, flag) "
+        . "VALUES (?, $run_after, ?, ?, ?, ?)", undef,
+        @args{'funcname', 'unique', 'coalesce', 'arg', 'flag'});
     return ($dbh->last_insert_id(undef, undef, undef, undef), $dbid);
-}
-
-# Just in case?
-sub cancel_job {
-    my $self  = shift;
 }
 
 # Further potential admin commands:

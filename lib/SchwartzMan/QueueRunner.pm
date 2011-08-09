@@ -69,7 +69,7 @@ sub _find_jobs_for_gearman {
         $dbh->begin_work;
         my $query = qq{
             SELECT jobid, funcname, uniqkey, coalesce, run_after, arg,
-            $dbid AS dbid
+            $dbid AS dbid, flag, failcount
             FROM job
             WHERE run_after <= UNIX_TIMESTAMP()
             ORDER BY run_after
@@ -163,7 +163,15 @@ sub _send_jobs_to_gearman {
 
     # TODO: Need to pass uniq in properly?
     for my $job (@$jobs) {
-        $client->dispatch_background($job->{funcname}, \encode_json($job), {});
+        my $funcname;
+        if ($job->{flag} eq 'shim') {
+            $funcname = $job->{funcname};
+        } elsif ($job->{flag} eq 'controller') {
+            $funcname = 'run_queued_job';
+        } else {
+            die "Unknown flag state $job->{flag}";
+        }
+        $client->dispatch_background($funcname, \encode_json($job), {});
     }
 }
 
