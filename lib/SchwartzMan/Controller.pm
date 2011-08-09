@@ -59,7 +59,7 @@ sub run_queued_job {
     } else {
         # TODO: Be more intelligent about when a failure requires a retry, vs
         # when it's permanently dead?
-        $sm_client->reschedule_job($sm_job);
+        $sm_client->failed_job($sm_job);
     }
 
     return;

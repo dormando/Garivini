@@ -76,12 +76,36 @@ sub complete_job {
 
 # Bump the run_after in some specific way (relative, absolute, etc)
 sub reschedule_job {
+    my ($self, $job, $when, $fail) = @_;
 
+    my $dbid = $job->{dbid}
+        or die "Malformed job missing dbid argument";
+    my $jobid = $job->{jobid}
+        or die "Malformed job missing id argument";
+
+    if ($when eq 'never') {
+        $when = 2147483647; # "max value"
+    } elsif ($when =~ m/^\+(\d+)$/) {
+        $when = 'UNIX_TIMESTAMP() + ' . $1;
+    } elsif ($when =~ m/^(\d+)$/) {
+        $when = $1;
+    } else {
+        die "Invalid timestamp: " . $when;
+    }
+
+    my $failcount = $job->{failcount} || 0;
+    $self->{dbd}->do($dbid, "UPDATE job SET run_after = $when, failcount = ? WHERE jobid=?",
+        undef, $failcount, $jobid);
 }
 
-# Reschedule for ENDOFTIME
-sub fail_job_permanently {
+# Reschedule with an arbitrary backoff.
+sub failed_job {
+    my ($self, $job) = @_;
+    my $failcount = ($job->{failcount} || 0) + 1;
+    my $delay = (2 ** $failcount) * 60;
+    $delay = 86400 if $delay > 86400;
 
+    $self->reschedule_job($job, "+$delay");
 }
 
 1;
