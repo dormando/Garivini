@@ -43,10 +43,27 @@ sub insert_job {
     # issue.
     my $run_after = $args{run_after} || 'UNIX_TIMESTAMP()';
     my ($ret, $dbh, $dbid) = $self->{dbd}->do(undef,
-        "INSERT INTO job (funcname, run_after, uniqkey, coalesce, arg, flag) "
+        "INSERT IGNORE INTO job (funcname, run_after, uniqkey, coalesce, arg, flag) "
         . "VALUES (?, $run_after, ?, ?, ?, ?)", undef,
         @args{'funcname', 'unique', 'coalesce', 'arg', 'flag'});
     return ($dbh->last_insert_id(undef, undef, undef, undef), $dbid);
+}
+
+# Takes an array of arrays as jobs
+# Ordered: funcname, uniqkey, coalesce, arg, flag
+# Inserts them all with the same timing, and same flag.
+# There's no way to do an inline listen for a mass job insert, but they can
+# still be executed via the controller if desired.
+sub insert_jobs {
+    my ($self, $jobs, $in, $flag) = @_;
+    my $run_after = $in || 'UNIX_TIMESTAMP()';
+    my $flag      = undef unless $flag;
+    
+    my $sql = 'INSERT IGNORE INTO job (funcname, uniqkey, coalesce,'.
+        'arg, flag, run_after)'.
+        join(', ', ('?, ?, ?, ?, ?, ?') x scalar @$jobs);
+    my ($ret, $dbh, $dbid) =
+        $self->{dbd}->do(undef, $sql, map { @$_, $flag, $run_after } @$jobs);
 }
 
 # Further potential admin commands:

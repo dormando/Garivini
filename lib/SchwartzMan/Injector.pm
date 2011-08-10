@@ -48,6 +48,9 @@ sub work {
 # For bonus points, submit jobs in this method with a run_after noted as
 # "locked", so the client code can pre-adjust it and not be forced to
 # re-encode.
+# TODO: If $job is an arrayref of other jobs, do a multi insert, but don't
+# inject directly into run_queued_job. QueueRunner will pick them back out
+# with the jobids intact.
 sub inject_jobs {
     my $self = shift;
     my $job  = shift;
