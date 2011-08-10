@@ -73,9 +73,10 @@ sub inject_jobs {
     $args->{jobid} = $jobid;
     $args->{dbid}  = $dbid;
     if ($run_job) {
-        # TODO: Submit uniq properly.
+        my $opts = ();
+        $opts{uniq} = $args->{uniqkey} if $args->{uniqkey};
         $self->{gm_client}->dispatch_background('run_queued_job',
-            \encode_json($args), {});
+            \encode_json($args), \%opts);
     }
 
     if ($self->{last_queue_check} < time() - 60) {

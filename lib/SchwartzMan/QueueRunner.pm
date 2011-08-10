@@ -161,7 +161,6 @@ sub _send_jobs_to_gearman {
 
     my $client = $self->{gearman_client};
 
-    # TODO: Need to pass uniq in properly?
     for my $job (@$jobs) {
         my $funcname;
         if ($job->{flag} eq 'shim') {
@@ -171,7 +170,9 @@ sub _send_jobs_to_gearman {
         } else {
             die "Unknown flag state $job->{flag}";
         }
-        $client->dispatch_background($funcname, \encode_json($job), {});
+        my %opts = ();
+        $opts{uniq} = $job->{uniqkey} if $job->{uniqkey};
+        $client->dispatch_background($funcname, \encode_json($job), \%opts);
     }
 }
 
