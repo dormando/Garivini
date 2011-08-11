@@ -12,7 +12,6 @@ use JSON;
 
 my %o = (loops => 1);
 
-# TODO: Doesn't support specifying multiple DB's yet. YAML config or whatever?
 GetOptions(\%o,
     'dsn=s',
     'username=s',

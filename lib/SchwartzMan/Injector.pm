@@ -31,7 +31,8 @@ sub new {
         job_servers => $self->{job_servers});
     $self->{last_queue_check} = 0;
     $self->{queues} = {};
-    $self->{queue_watermark_depth} = 4000; # TODO: Make configurable
+    $self->{queue_watermark_depth} = $args{queue_watermark_depth}
+        || 4000;
 
     return $self;
 }

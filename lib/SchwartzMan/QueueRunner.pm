@@ -47,8 +47,9 @@ sub new {
         job_servers => $args{job_servers});
 
     $self->{batch_fetch_limit} = MIN_BATCH_SIZE;
-    $self->{batch_run_sleep} = 1;
-    $self->{queue_watermark_depth} = 4000; # FIXME: Example :P
+    $self->{batch_run_sleep} = $args{batch_run_sleep} || 1;
+    $self->{queue_watermark_depth} = $args{queue_watermark_depth} ||
+        4000;
 
     return $self;
 }

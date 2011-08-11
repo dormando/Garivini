@@ -12,8 +12,6 @@ use JSON;
 
 my %o = ();
 
-# TODO: Doesn't support specifying multiple DB's yet. YAML config or whatever?
-# TODO: Uhh... require a control manager or do our own fork management?
 GetOptions(\%o,
     'gearmand=s@',
     'dsn=s',

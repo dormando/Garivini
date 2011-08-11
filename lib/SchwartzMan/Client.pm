@@ -33,15 +33,16 @@ sub new {
 # 'shim' tells the QueueRunner that the worker is responsible for removing the
 # job from the database upon completion.
 # 'controller' tells it to inject the job through a controller worker.
+# TODO: Allow run_after to be more flexible
 sub insert_job {
     my $self = shift;
     my %args = @_;
     $args{unique}    = undef unless $args{unique};
     $args{coalesce}  = undef unless $args{coalesce};
     $args{flag}      = undef unless $args{flag};
-    # FIXME: Verify $run_after as an argument, or else we have an injection
-    # issue.
-    my $run_after = $args{run_after} || 'UNIX_TIMESTAMP()';
+
+    my $run_after = 'UNIX_TIMESTAMP() + ' . ($args{run_after} ?
+        int($args{run_after} : '0');
     my ($ret, $dbh, $dbid) = $self->{dbd}->do(undef,
         "INSERT IGNORE INTO job (funcname, run_after, uniqkey, coalesce, arg, flag) "
         . "VALUES (?, $run_after, ?, ?, ?, ?)", undef,
@@ -56,7 +57,7 @@ sub insert_job {
 # still be executed via the controller if desired.
 sub insert_jobs {
     my ($self, $jobs, $in, $flag) = @_;
-    my $run_after = $in || 'UNIX_TIMESTAMP()';
+    my $run_after = 'UNIX_TIMESTAMP() + ' . ($in ? int($in) : 0);
     my $flag      = undef unless $flag;
     
     my $sql = 'INSERT IGNORE INTO job (funcname, uniqkey, coalesce,'.
