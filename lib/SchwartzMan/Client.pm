@@ -41,12 +41,12 @@ sub insert_job {
     $args{coalesce}  = undef unless $args{coalesce};
     $args{flag}      = undef unless $args{flag};
 
-    my $run_after = 'UNIX_TIMESTAMP() + ' . ($args{run_after} ?
-        int($args{run_after} : '0');
+    $args{run_after} = 'UNIX_TIMESTAMP() + ' . ($args{run_after} ?
+        int($args{run_after}) : '0');
     my ($ret, $dbh, $dbid) = $self->{dbd}->do(undef,
         "INSERT IGNORE INTO job (funcname, run_after, uniqkey, coalesce, arg, flag) "
-        . "VALUES (?, $run_after, ?, ?, ?, ?)", undef,
-        @args{'funcname', 'unique', 'coalesce', 'arg', 'flag'});
+        . "VALUES (?, ?, ?, ?, ?, ?)", undef,
+        @args{'funcname', 'run_after', 'unique', 'coalesce', 'arg', 'flag'});
     return ($dbh->last_insert_id(undef, undef, undef, undef), $dbid);
 }
 
@@ -58,11 +58,11 @@ sub insert_job {
 sub insert_jobs {
     my ($self, $jobs, $in, $flag) = @_;
     my $run_after = 'UNIX_TIMESTAMP() + ' . ($in ? int($in) : 0);
-    my $flag      = undef unless $flag;
+    $flag      = undef unless $flag;
     
     my $sql = 'INSERT IGNORE INTO job (funcname, uniqkey, coalesce,'.
-        'arg, flag, run_after)'.
-        join(', ', ('?, ?, ?, ?, ?, ?') x scalar @$jobs);
+        "arg, flag, $run_after)".
+        join(', ', ('?, ?, ?, ?, ?') x scalar @$jobs);
     my ($ret, $dbh, $dbid) =
         $self->{dbd}->do(undef, $sql, map { @$_, $flag, $run_after } @$jobs);
 }

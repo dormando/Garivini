@@ -28,7 +28,7 @@ use Data::Dumper qw/Dumper/;
 # size if queue isn't empty.
 use constant MIN_BATCH_SIZE => 50;
 use constant MAX_BATCH_SIZE => 2000;
-use constant DEBUG => 1;
+use constant DEBUG => 0;
 
 sub new {
     my SchwartzMan::QueueRunner $self = shift;
@@ -164,6 +164,7 @@ sub _send_jobs_to_gearman {
 
     for my $job (@$jobs) {
         my $funcname;
+        $job->{flag} ||= 'shim';
         if ($job->{flag} eq 'shim') {
             $funcname = $job->{funcname};
         } elsif ($job->{flag} eq 'controller') {
@@ -187,6 +188,9 @@ sub work {
         my $queues = $self->_check_gearman_queues;
         my ($jobs, $pulled) = $self->_find_jobs_for_gearman($self->{batch_fetch_limit},
             $queues);
+        if (!defined $jobs) {
+            sleep $self->{batch_run_sleep}; next;
+        }
         my $job_count = scalar @$jobs;
         DEBUG && print STDERR "Pulled $pulled new jobs from DB\n";
         DEBUG && print STDERR "Sending $job_count jobs to gearmand\n";

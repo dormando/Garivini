@@ -67,14 +67,14 @@ sub inject_jobs {
     # TODO: Uhh if $job->{arg} was a cuddled JSON blob, did this just decode
     # that? Easy enough to test and fix, but I'm tired :P
     $args->{run_after} = ($run_job && exists $args->{run_after}) ? $args->{run_after}
-        : 'UNIX_TIMESTAMP() + 1000'; # Sick, don't do this directly, here.
+        : 1000;
     $args->{flag} = 'controller';
     my ($jobid, $dbid) = $self->{sm_client}->insert_job(%$args);
 
     $args->{jobid} = $jobid;
     $args->{dbid}  = $dbid;
     if ($run_job) {
-        my $opts = ();
+        my %opts = ();
         $opts{uniq} = $args->{uniqkey} if $args->{uniqkey};
         $self->{gm_client}->dispatch_background('run_queued_job',
             \encode_json($args), \%opts);

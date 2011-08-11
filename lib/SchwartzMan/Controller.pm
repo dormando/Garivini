@@ -14,7 +14,7 @@ use Gearman::Client;
 use Gearman::Worker;
 use JSON;
 
-use constant DEBUG => 1;
+use constant DEBUG => 0;
 
 sub new {
     my SchwartzMan::Controller $self = shift;
