@@ -1,4 +1,11 @@
 #!/usr/bin/perl
+#
+# ./gv_consume --dsn="DBI:mysql:job:host=127.0.0.1;database=job" \
+# --username="job" --password="job" --gearmand="127.0.0.1:7003"
+# For low latency mode, add:
+# --pure
+# ... and --dsn/etc become optional.
+#
 
 use strict;
 use warnings;

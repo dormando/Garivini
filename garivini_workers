@@ -1,4 +1,9 @@
 #!/usr/bin/perl
+#
+# ./garivini_workers --gearmand="127.0.0.1:7003" \
+# --dsn="DBI:mysql:job:host=127.0.0.1;database=job" --username="job" \
+# --password="job" --roles="QueueRunner,Injector,Controller"
+#
 
 use strict;
 use warnings;

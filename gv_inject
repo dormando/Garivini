@@ -1,4 +1,10 @@
 #!/usr/bin/perl
+#
+# ./gv_inject --dsn="DBI:mysql:job:host=127.0.0.1;database=job" \
+# --username="job" --password="job" --loops=1000
+# For low latency mode, add:
+# --gearmand="127.0.0.1:7003" --pure
+#
 
 use strict;
 use warnings;
