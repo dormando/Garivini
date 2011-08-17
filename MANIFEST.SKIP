@@ -1,0 +1,14 @@
+.shipit
+\bCVS\b
+^MANIFEST\.
+^Makefile$
+~$
+\.old$
+^blib/
+_blib$
+^MakeMaker-\d
+^\.exists
+\bdebian\b
+\bconf\b
+\.svn
+\.git
