@@ -7,7 +7,7 @@ Garivini::DB - Dumb utility for managing DB connections
 =head1 SYNOPSIS
 
 my $db = Garivini::DB->new(dbs => { 1 => { id => 1, dsn =>
-    'DBI:mysq:job:host=127.0.0.1', user => 'job',
+    'DBI:mysql:job:host=127.0.0.1', user => 'job',
     pass => 'job' } });
 
 my ($dbh, $id) = $db->get_dbh();

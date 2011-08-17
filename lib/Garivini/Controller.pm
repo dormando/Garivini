@@ -1,5 +1,33 @@
 package Garivini::Controller;
 
+=head1 NAME
+
+Garivini::Controller - Gearman worker for executing Garivini jobs
+
+=head1 DESCRIPTION
+
+Picks up asynchronously submitted Garivini jobs, then synchronously submits
+them back through Gearman to a real worker.
+
+Once the worker completes the job, it is removed from the Garivini DB or
+rescheduled for a future retry.
+
+You need to run as many Controller workers as you have workers for other jobs.
+
+NOTE that this is an optional worker for providing job routing via pure
+Gearman calls, or providing low latency. If using L<Garivini::Client>
+directly, only L<Garivini::QueueRunner> workers are needed.
+
+=head1 SYNOPSIS
+
+my $worker = Garivini::Controller->new(dbs => {
+    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+        pass => 'job' } },
+    job_servers => ['127.0.0.1']);
+$worker->work;
+
+=cut
+
 use strict;
 use warnings;
 use fields ('dbd',

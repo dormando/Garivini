@@ -10,7 +10,7 @@ use Garivini::Client
 
 # Client
 my $cli = Garivini::Client->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+    1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
         pass => 'job' } });
 $cli->insert_job(funcname => 'hello', arg => 'world');
 
@@ -19,7 +19,7 @@ use Gearman::Worker;
 use JSON;
 
 my $cli = Garivini::Client->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+    1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
         pass => 'job' } });
 my $worker = Gearman::Worker->new;
 $worker->job_servers('127.0.0.1');

@@ -1,5 +1,55 @@
 package Garivini::Injector;
 
+=head1 NAME
+
+Garivini::Injector - Synchronously inject jobs into Garivini
+
+=head1 DESCRIPTION
+
+Gearman worker for submitting jobs into Garivini via Gearman. Clients should
+synchronously send jobs through this worker, which are then stored into the
+Garivini DB before returning to the client.
+
+Any actual job execution is run asynchronously, by way of a
+L<Garivini::Controller> worker.
+
+Jobs may be submitted with any language. You need to run enough of these
+workers so jobs may be quickly pulled out and queued into the database.
+
+NOTE that this worker is only required if low latency is desired, or you wish
+to use a pure Gearman client. If using L<Garivini::Client> directly, only
+L<Garivini::QueueRunner> workers are needed.
+
+=head1 SYNOPSIS
+
+my $worker = Garivini::Controller->new(dbs => {
+    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+        pass => 'job' } },
+    job_servers => ['127.0.0.1'],
+    queue_watermark_depth => 4000);
+$worker->work;
+
+=head1 OPTIONS
+
+=over
+
+=item queue_watermark_depth
+
+UNIMPLEMENTED! After writing a job to the database, but before submitting it
+back into Gearman for execution, the queue depth for that particular function
+is checked. If there are more than queue_watermark_depth jobs presently
+waiting for execution, the job will not be directly executed.
+
+Instead, L<Garivini::QueueRunner> will queue the job for execution after
+Gearman's queues have depleted enough. Use this to help avoid running Gearmand
+out of memory.
+
+Set to 0 to disable.
+
+=back
+
+=cut
+
 use strict;
 use warnings;
 
@@ -32,7 +82,7 @@ sub new {
     $self->{last_queue_check} = 0;
     $self->{queues} = {};
     $self->{queue_watermark_depth} = $args{queue_watermark_depth}
-        || 4000;
+        || 0;
 
     return $self;
 }
@@ -91,6 +141,8 @@ sub inject_jobs {
 # TODO: Copy/paste code from QueueRunner until Gearman::Client has a thing
 # for this.
 sub check_gearman_queues {
+    my $self = shift;
+    return {} if $self->{queue_watermark_depth} == 0;
     return {};
 }
 

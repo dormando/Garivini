@@ -24,7 +24,7 @@ in high throughput, or low latency modes.
 use Garivini::Client;
 
 my $cli = Garivini::Client->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+    1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
         pass => 'job' } });
 $cli->insert_job(funcname => 'hello', arg => 'world');
 
@@ -34,7 +34,7 @@ use Garivini::Client;
 use JSON;
 
 my $cli = Garivini::Client->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+    1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
         pass => 'job' } });
 my $worker = Gearman::Worker->new;
 $worker->job_servers('127.0.0.1');
@@ -207,13 +207,12 @@ Yann Kerherve
 
 Martin Atkins
 
-Antoine Imbert
-
 Hachi
 
 =head1 COPYRIGHT
 
 Copyright 2011 Dormando
+
 Copyright 2011 SAY Media
 
 =head1 LICENSE

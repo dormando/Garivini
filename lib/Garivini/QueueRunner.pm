@@ -1,4 +1,97 @@
 package Garivini::QueueRunner;
+
+=head1 NAME
+
+Garivini::QueueRunner - Asynchronously batch queue jobs
+
+=head1 DESCRIPTION
+
+Required in all run modes, QueueRunner workers pull jobs out of a Garivini
+database in batches and submit them asynchronously through Gearman for
+execution. It then sleeps for a moment and runs again.
+
+It pulls jobs ordered by when they should be executed, and tries to only push
+them into Gearman if the queues are not overloaded (see queue_watermark_depth
+below).
+
+You need enough workers to pull jobs out of the DB as fast as they go in. If
+running in low latency mode, you need fewer QueueRunners. If in high
+throughput mode, you still don't need many, but enough. See below for more
+information.
+
+=head1 SYNOPSIS
+
+my $worker = Garivini::Controller->new(dbs => {
+    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+        pass => 'job' } },
+    job_servers => ['127.0.0.1'],
+    queue_watermark_depth => 4000,
+    batch_run_sleep => 1);
+$worker->work;
+
+=head1 OPTIONS
+
+=over
+
+=item queue_watermark_depth
+
+When pulling jobs from the database, but before submitting back through
+Gearman, the queue depth for a job's function is checked. If there are more
+than queue_watermark_depth jobs presently waiting for execution, the job will
+be rescheduled in the database. This allows faster jobs to bubble down and be
+executed, and primarily attempting to not run Gearmand out of memory by
+overqueueing work.
+
+Set to 0 to disable.
+
+=item batch_run_sleep
+
+After submitting jobs to Gearmand, sleep for this many seconds. Increase this
+value to avoid hammering your database (or Gearmand) as much.
+
+Defaults to 1 second.
+
+=item batch_max_size
+
+QueueRunner's fetch as few jobs as they can at once, in order to allow other
+QueueRunner's to process some work in parallel. The more jobs there are
+waiting, the more it will pull at once, up to batch_max_size. See below for
+more information.
+
+Defaults to 1000
+
+=back
+
+=head1 Calculating max job rate
+
+You should calculate how many workers you need and what to set their options
+to by how many jobs you expect to process per second.
+
+If batch_max_size is set to 1000, batch_run_sleep is set to 1, the amount of
+time it takes to fetch from the DB and queue work is N:
+
+max_job_rate = batch_max_size / (batch_run_sleep + N)
+
+If N is, 0.10s, you can queue a maximum of 900 jobs per second from one
+worker, or ~77.7 million jobs per day. Future versions should factor N into
+the sleep, so watch this space for updates.
+
+If you run 100 million jobs per day, but your peak job rate is 5000 jobs per
+second, make sure you take that into account when setting up workers. It's
+important to leave some overhead.
+
+=head2 Job batching algorithm
+
+QueueRunner attempts to queue jobs as slowly as possible. It starts with a low
+number (say 50) per sleep. If it pulls back 50 jobs, during the next round it
+will fetch 50 + 10% of batch_max_size. It will slowly increase until it hits
+batch_max_size.
+
+This helps prevent multiple QueueRunners from hogging each other's work,
+keeping latency down as much as they can.
+
+=cut
+
 use strict;
 use warnings;
 
@@ -9,6 +102,7 @@ use fields (
             'gearman_sockets',
             'batch_fetch_limit',
             'batch_run_sleep',
+            'batch_max_size',
             'queue_watermark_depth',
             );
 
@@ -27,7 +121,6 @@ use Data::Dumper qw/Dumper/;
 # Queue loading algorithm; pull minimum batch size, then grow up to the max
 # size if queue isn't empty.
 use constant MIN_BATCH_SIZE => 50;
-use constant MAX_BATCH_SIZE => 2000;
 use constant DEBUG => 0;
 
 sub new {
@@ -47,6 +140,9 @@ sub new {
         job_servers => $args{job_servers});
 
     $self->{batch_fetch_limit} = MIN_BATCH_SIZE;
+    $self->{batch_max_size} = $args{batch_max_size} || 1000;
+    die "batch_max_size cannot be less than " . MIN_BATCH_SIZE
+        if $self->{batch_max_size} < MIN_BATCH_SIZE;
     $self->{batch_run_sleep} = $args{batch_run_sleep} || 1;
     $self->{queue_watermark_depth} = $args{queue_watermark_depth} ||
         4000;
@@ -121,6 +217,7 @@ sub _find_jobs_for_gearman {
 # Look for any functions which are low enough in queue to get more injections.
 sub _check_gearman_queues {
     my $self    = shift;
+    return {} if $self->{queue_watermark_depth} == 0;
     my $servers = $self->{job_servers};
     my $socks   = $self->{gearman_sockets};
     my %queues  = ();
@@ -196,12 +293,14 @@ sub work {
         DEBUG && print STDERR "Sending $job_count jobs to gearmand\n";
         $self->_send_jobs_to_gearman($jobs);
 
+        # Yeah I know. Lets play a word-flip game.
+        my $max_batch_size = $self->{batch_max_size};
         if ($job_count >= $self->{batch_fetch_limit}) {
-            $self->{batch_fetch_limit} += (MAX_BATCH_SIZE * 0.1);
-            $self->{batch_fetch_limit} = MAX_BATCH_SIZE
-                if $self->{batch_fetch_limit} >= MAX_BATCH_SIZE;
+            $self->{batch_fetch_limit} += ($max_batch_size * 0.1);
+            $self->{batch_fetch_limit} = $max_batch_size
+                if $self->{batch_fetch_limit} >= $max_batch_size;
         } else {
-            $self->{batch_fetch_limit} -= (MAX_BATCH_SIZE * 0.05);
+            $self->{batch_fetch_limit} -= ($max_batch_size * 0.05);
             $self->{batch_fetch_limit} = MIN_BATCH_SIZE
                 if $self->{batch_fetch_limit} <= MIN_BATCH_SIZE;
         }
