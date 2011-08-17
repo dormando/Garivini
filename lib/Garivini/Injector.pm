@@ -22,12 +22,12 @@ L<Garivini::QueueRunner> workers are needed.
 
 =head1 SYNOPSIS
 
-my $worker = Garivini::Controller->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
-        pass => 'job' } },
-    job_servers => ['127.0.0.1'],
-    queue_watermark_depth => 4000);
-$worker->work;
+    my $worker = Garivini::Controller->new(dbs => {
+        1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+            pass => 'job' } },
+        job_servers => ['127.0.0.1'],
+        queue_watermark_depth => 4000);
+    $worker->work;
 
 =head1 OPTIONS
 
@@ -65,7 +65,7 @@ use fields (
             'sm_client',
             'gm_client',
             'last_queue_check',
-            'queues', 
+            'queues',
             'queue_watermark_depth',
            );
 

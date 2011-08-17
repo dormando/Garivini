@@ -21,13 +21,13 @@ information.
 
 =head1 SYNOPSIS
 
-my $worker = Garivini::Controller->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
-        pass => 'job' } },
-    job_servers => ['127.0.0.1'],
-    queue_watermark_depth => 4000,
-    batch_run_sleep => 1);
-$worker->work;
+    my $worker = Garivini::Controller->new(dbs => {
+        1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+            pass => 'job' } },
+        job_servers => ['127.0.0.1'],
+        queue_watermark_depth => 4000,
+        batch_run_sleep => 1);
+    $worker->work;
 
 =head1 OPTIONS
 
@@ -70,7 +70,7 @@ to by how many jobs you expect to process per second.
 If batch_max_size is set to 1000, batch_run_sleep is set to 1, the amount of
 time it takes to fetch from the DB and queue work is N:
 
-max_job_rate = batch_max_size / (batch_run_sleep + N)
+    max_job_rate = batch_max_size / (batch_run_sleep + N)
 
 If N is, 0.10s, you can queue a maximum of 900 jobs per second from one
 worker, or ~77.7 million jobs per day. Future versions should factor N into
@@ -80,7 +80,7 @@ If you run 100 million jobs per day, but your peak job rate is 5000 jobs per
 second, make sure you take that into account when setting up workers. It's
 important to leave some overhead.
 
-=head2 Job batching algorithm
+=head1 Job batching algorithm
 
 QueueRunner attempts to queue jobs as slowly as possible. It starts with a low
 number (say 50) per sleep. If it pulls back 50 jobs, during the next round it

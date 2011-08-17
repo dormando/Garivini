@@ -20,60 +20,60 @@ in high throughput, or low latency modes.
 
 =head2 Throughput Mode
 
-# Set up workers (see below)
-use Garivini::Client;
+    # Set up workers (see below)
+    use Garivini::Client;
 
-my $cli = Garivini::Client->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
-        pass => 'job' } });
-$cli->insert_job(funcname => 'hello', arg => 'world');
+    my $cli = Garivini::Client->new(dbs => {
+        1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
+            pass => 'job' } });
+    $cli->insert_job(funcname => 'hello', arg => 'world');
 
-# Meanwhile, in a worker
-use Gearman::Worker;
-use Garivini::Client;
-use JSON;
+    # Meanwhile, in a worker
+    use Gearman::Worker;
+    use Garivini::Client;
+    use JSON;
 
-my $cli = Garivini::Client->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
-        pass => 'job' } });
-my $worker = Gearman::Worker->new;
-$worker->job_servers('127.0.0.1');
-$worker->register_function('hello' => \&hello);
-$worker->work;
+    my $cli = Garivini::Client->new(dbs => {
+        1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
+            pass => 'job' } });
+    my $worker = Gearman::Worker->new;
+    $worker->job_servers('127.0.0.1');
+    $worker->register_function('hello' => \&hello);
+    $worker->work;
 
-sub hello {
-    my $job = decode_json(${$_[0]->argref});
-    print "Hello ", $job->{arg}, "\n";
-    $cli->complete_job($job);
-}
+    sub hello {
+        my $job = decode_json(${$_[0]->argref});
+        print "Hello ", $job->{arg}, "\n";
+        $cli->complete_job($job);
+    }
 
 See L<Garivini::Client> for more.
 
 =head2 Low Latency Mode
 
-# Client
-use Gearman::Client;
-use JSON;
+    # Client
+    use Gearman::Client;
+    use JSON;
 
-my $cli = Gearman::Client->new;
-$cli->job_servers('127.0.0.1');
-$cli->do_task('inject_jobs', \encode_json({ funcname => 'hello',
-    arg => 'world' }));
+    my $cli = Gearman::Client->new;
+    $cli->job_servers('127.0.0.1');
+    $cli->do_task('inject_jobs', \encode_json({ funcname => 'hello',
+        arg => 'world' }));
 
-# Worker
-use Gearman::Worker;
-use JSON;
+    # Worker
+    use Gearman::Worker;
+    use JSON;
 
-my $worker = Gearman::Worker->new;
-$worker->job_servers('127.0.0.1');
-$worker->register_function('hello' => \&hello);
-$worker->work;
+    my $worker = Gearman::Worker->new;
+    $worker->job_servers('127.0.0.1');
+    $worker->register_function('hello' => \&hello);
+    $worker->work;
 
-sub hello {
-    my $job = decode_json(${$_[0]->argref});
-    print "Hello ", $job->{arg}, "\n";
-    # Job completed successfully!
-}
+    sub hello {
+        my $job = decode_json(${$_[0]->argref});
+        print "Hello ", $job->{arg}, "\n";
+        # Job completed successfully!
+    }
 
 =head1 UTILITIES
 
@@ -88,16 +88,15 @@ start any of the workers.
 
 =head2 General design
 
-Garivini is a job persistence layer for Gearman. A "job" can be any binary
-blob of data. It persists jobs into a MySQL server, then executes them
+Garivini is a job persistence layer for Gearman. A "job" can be any binary blob
+of data. It persists jobs into a MySQL server, then executes them
 asynchronously.
 
-Two main modes of operation are supported: High Throughput,
-where a small client is used to directly inject jobs, and a worker
-asynchronously sends the jobs back through Gearman in bulk. Also a Low Latency, or
-Pure Gearman mode, where jobs are wrapped in JSON and sent through Gearman to
-a set of special workers, which persists then execute the job themselves
-immediately.
+Two main modes of operation are supported: High Throughput, where a small
+client is used to directly inject jobs, and a worker asynchronously sends the
+jobs back through Gearman in bulk. Also a Low Latency, or Pure Gearman mode,
+where jobs are wrapped in JSON and sent through Gearman to a set of special
+workers, which persists then execute the job themselves immediately.
 
 =head2 High Throughput
 
@@ -112,9 +111,9 @@ You will need to run a handful of QueueRunner workers to manage the queue, but
 it is not necessary to run many of them.
 
 This combination easily allows millions of jobs to quickly pass through the
-system. The tradeoff is a delay between inserting a job into the queue, and
-the L<Garivini::QueueRunner> workers submitting the job to Gearman. A typical
-setup would have an average latency of one second. This could be lowered or
+system. The tradeoff is a delay between inserting a job into the queue, and the
+L<Garivini::QueueRunner> workers submitting the job to Gearman. A typical setup
+would have an average latency of one second. This could be lowered or
 increased, based on tuning decisions.
 
 Any language may be used to submit or work on jobs, so long as they implement

@@ -20,11 +20,11 @@ directly, only L<Garivini::QueueRunner> workers are needed.
 
 =head1 SYNOPSIS
 
-my $worker = Garivini::Controller->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
-        pass => 'job' } },
-    job_servers => ['127.0.0.1']);
-$worker->work;
+    my $worker = Garivini::Controller->new(dbs => {
+        1 => { id => 1, dsn => 'DBI:mysq:job:host=127.0.0.1', user => 'job',
+            pass => 'job' } },
+        job_servers => ['127.0.0.1']);
+    $worker->work;
 
 =cut
 

@@ -6,31 +6,31 @@ Garivini::Client - Thin client for submitting jobs via Garivini
 
 =head1 SYNOPSIS
 
-use Garivini::Client
+    use Garivini::Client;
 
-# Client
-my $cli = Garivini::Client->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
-        pass => 'job' } });
-$cli->insert_job(funcname => 'hello', arg => 'world');
+    # Client
+    my $cli = Garivini::Client->new(dbs => {
+        1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
+            pass => 'job' } });
+    $cli->insert_job(funcname => 'hello', arg => 'world');
 
-# Worker
-use Gearman::Worker;
-use JSON;
+    # Worker
+    use Gearman::Worker;
+    use JSON;
 
-my $cli = Garivini::Client->new(dbs => {
-    1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
-        pass => 'job' } });
-my $worker = Gearman::Worker->new;
-$worker->job_servers('127.0.0.1');
-$worker->register_function('hello' => \&hello);
-$worker->work;
+    my $cli = Garivini::Client->new(dbs => {
+        1 => { id => 1, dsn => 'DBI:mysql:job:host=127.0.0.1', user => 'job',
+            pass => 'job' } });
+    my $worker = Gearman::Worker->new;
+    $worker->job_servers('127.0.0.1');
+    $worker->register_function('hello' => \&hello);
+    $worker->work;
 
-sub hello {
-    my $job = decode_json(${$_[0]->argref});
-    print "Hello ", $job->{arg}, "\n";
-    $cli->complete_job($job);
-}
+    sub hello {
+        my $job = decode_json(${$_[0]->argref});
+        print "Hello ", $job->{arg}, "\n";
+        $cli->complete_job($job);
+    }
 
 =head1 DESCRIPTION
 
@@ -39,9 +39,11 @@ Used by client code directly, or indirectly via the supplied workers.
 
 =head1 METHODS
 
-=head2 new
+=over
 
-$cli = Garivini::Client->new( %OPTIONS );
+=item new
+
+    $cli = Garivini::Client->new( %OPTIONS );
 
 Creates a new client object. The only arguments it takes are for initializing
 a L<Garivini::DB> object.
@@ -69,7 +71,7 @@ sub new {
     return $self;
 }
 
-=head2 insert_job
+=item insert_job
 
 Takes a hash of arguments and directly tosses a job into the a DB.
 
@@ -81,15 +83,25 @@ Hash describing a job
 
 =over
 
-=item funcname: (worker function name to execute the job)
+=item funcname
 
-=item run_after: (if given, offset from now for when to run job)
+worker function name to execute the job
 
-=item unique: (only run one job with this id (per database defined!))
+=item run_after
 
-=item coalesce: (unimplemented. for running similar jobs together)
+if given, offset from now for when to run job
 
-=item arg: (serialized blob payload)
+=item unique
+
+only run one job with this id (per database defined!)
+
+=item coalesce
+
+unimplemented. for running similar jobs together
+
+=item arg
+
+serialized blob payload.
 
 =back
 
@@ -120,9 +132,9 @@ sub insert_job {
     return ($dbh->last_insert_id(undef, undef, undef, undef), $dbid);
 }
 
-=head2 insert_jobs
+=item insert_jobs
 
-$cli->insert_jobs($jobs, $in, $flag);
+    $cli->insert_jobs($jobs, $in, $flag);
 
 Takes an array of arrays as jobs.
 
@@ -144,7 +156,7 @@ sub insert_jobs {
     my ($self, $jobs, $in, $flag) = @_;
     my $run_after = 'UNIX_TIMESTAMP() + ' . ($in ? int($in) : 0);
     $flag      = undef unless $flag;
-    
+
     my $sql = 'INSERT IGNORE INTO job (funcname, uniqkey, coalesce,'.
         "arg, flag, $run_after)".
         join(', ', ('?, ?, ?, ?, ?') x scalar @$jobs);
@@ -162,9 +174,9 @@ sub failed_jobs {
 
 }
 
-=head2 complete_job
+=item complete_job
 
-$cli->complete_job($job_handle);
+    $cli->complete_job($job_handle);
 
 Takes a job handle and removes the job from the database. Job handles are
 received by Gearman workers, with the dbid and jobid's filled in.
@@ -183,9 +195,9 @@ sub complete_job {
     $self->{dbd}->do($dbid, "DELETE FROM job WHERE jobid=?", undef, $jobid);
 }
 
-=head2 reschedule_job
+=item reschedule_job
 
-$cli->reschedule_job($job_handle, $when);
+    $cli->reschedule_job($job_handle, $when);
 
 Reschedules a job for some time in the future, in case of temporary failure.
 You should call "failed_job" instead of this in most cases.
@@ -194,7 +206,7 @@ You should call "failed_job" instead of this in most cases.
 
 =item when
 
-When to reschedule the job. 
+When to reschedule the job.
 
 "never" sets the job to execute in 2038, long after civilization has been
 reclaimed. This leaves the job in the database for inspection, but will
@@ -232,9 +244,9 @@ sub reschedule_job {
         undef, $failcount, $jobid);
 }
 
-=head2 failed_job
+=item failed_job
 
-$cli->failed_job($job_handle);
+    $cli->failed_job($job_handle);
 
 Reschedules a job to retry in the future in case of a temporary failure.
 Applies a generic backoff algorithm based on the number of times the job has
@@ -250,5 +262,9 @@ sub failed_job {
 
     $self->reschedule_job($job, "+$delay");
 }
+
+=back
+
+=cut
 
 1;
