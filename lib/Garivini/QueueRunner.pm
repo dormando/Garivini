@@ -1,4 +1,4 @@
-package SchwartzMan::QueueRunner;
+package Garivini::QueueRunner;
 use strict;
 use warnings;
 
@@ -13,7 +13,7 @@ use fields (
             );
 
 use Carp qw/croak/;
-use SchwartzMan::DB;
+use Garivini::DB;
 use Gearman::Client;
 use IO::Socket;
 use JSON;
@@ -31,7 +31,7 @@ use constant MAX_BATCH_SIZE => 2000;
 use constant DEBUG => 0;
 
 sub new {
-    my SchwartzMan::QueueRunner $self = shift;
+    my Garivini::QueueRunner $self = shift;
     $self = fields::new($self) unless ref $self;
     my %args = @_;
 
@@ -41,7 +41,7 @@ sub new {
     $self->{gearman_sockets} = {};
 
     # TODO: Configuration verification!
-    $self->{dbd}            = SchwartzMan::DB->new(%args);
+    $self->{dbd}            = Garivini::DB->new(%args);
     $self->{job_servers}    = $args{job_servers};
     $self->{gearman_client} = Gearman::Client->new(
         job_servers => $args{job_servers});

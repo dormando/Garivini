@@ -6,7 +6,7 @@ use warnings;
 use FindBin '$Bin';
 use lib "$Bin/lib";
 use Getopt::Long;
-use SchwartzMan::Client;
+use Garivini::Client;
 use Gearman::Client;
 use JSON;
 
@@ -26,7 +26,7 @@ die "Need dsn" unless $o{dsn};
 run();
 
 sub run {
-    my $sm_client = SchwartzMan::Client->new(
+    my $sm_client = Garivini::Client->new(
         dbs => {1 => { id => 1, dsn => $o{dsn}, user => $o{username},
         pass => $o{password}, }},
         );

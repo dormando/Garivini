@@ -1,4 +1,4 @@
-package SchwartzMan::Controller;
+package Garivini::Controller;
 
 use strict;
 use warnings;
@@ -8,8 +8,8 @@ use fields ('dbd',
             'job_servers',
            );
 
-use SchwartzMan::DB;
-use SchwartzMan::Client;
+use Garivini::DB;
+use Garivini::Client;
 use Gearman::Client;
 use Gearman::Worker;
 use JSON;
@@ -17,12 +17,12 @@ use JSON;
 use constant DEBUG => 0;
 
 sub new {
-    my SchwartzMan::Controller $self = shift;
+    my Garivini::Controller $self = shift;
     $self = fields::new($self) unless ref $self;
     my %args = @_;
 
     $self->{job_servers} = delete $args{job_servers};
-    $self->{sm_client} = SchwartzMan::Client->new(%args);
+    $self->{sm_client} = Garivini::Client->new(%args);
     $self->{gm_client} = Gearman::Client->new(
         job_servers => $self->{job_servers});
 

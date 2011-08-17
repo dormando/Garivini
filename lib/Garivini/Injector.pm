@@ -1,10 +1,10 @@
-package SchwartzMan::Injector;
+package Garivini::Injector;
 
 use strict;
 use warnings;
 
-use SchwartzMan::DB;
-use SchwartzMan::Client;
+use Garivini::DB;
+use Garivini::Client;
 use Gearman::Worker;
 use Gearman::Client;
 use JSON;
@@ -20,13 +20,13 @@ use fields (
            );
 
 sub new {
-    my SchwartzMan::Injector $self = shift;
+    my Garivini::Injector $self = shift;
     $self = fields::new($self) unless ref $self;
     my %args = @_;
 
     $self->{job_servers} = delete $args{job_servers};
 
-    $self->{sm_client} = SchwartzMan::Client->new(%args);
+    $self->{sm_client} = Garivini::Client->new(%args);
     $self->{gm_client} = Gearman::Client->new(
         job_servers => $self->{job_servers});
     $self->{last_queue_check} = 0;
@@ -88,7 +88,7 @@ sub inject_jobs {
     return;
 }
 
-# TODO: Copy/paste code from SchwartzMan.pm until Gearman::Client has a thing
+# TODO: Copy/paste code from QueueRunner until Gearman::Client has a thing
 # for this.
 sub check_gearman_queues {
     return {};

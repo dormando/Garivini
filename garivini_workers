@@ -42,7 +42,7 @@ run($primary_role);
 
 sub run {
     my $role = shift;
-    my $class = 'SchwartzMan::' . $role;
+    my $class = 'Garivini::' . $role;
     eval "use $class; 1" or die $@;
     my $worker = $class->new(job_servers => $o{gearmand},
         dbs => {1 => { id => 1, dsn => $o{dsn}, user => $o{username},

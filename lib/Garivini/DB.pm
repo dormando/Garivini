@@ -1,4 +1,4 @@
-package SchwartzMan::DB;
+package Garivini::DB;
 use strict;
 use warnings;
 
@@ -15,7 +15,7 @@ use DBI;
 use constant DB_RETRY_DEFAULT => 30;
 
 sub new {
-    my SchwartzMan::DB $self = shift;
+    my Garivini::DB $self = shift;
     $self = fields::new($self) unless ref $self;
     my %args = @_;
 

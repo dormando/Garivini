@@ -1,22 +1,22 @@
-package SchwartzMan::Client;
+package Garivini::Client;
 
 use strict;
 use warnings;
 use fields ('dbd',
             );
 
-use SchwartzMan::DB;
+use Garivini::DB;
 
 # Extremely simple shim client:
 # Takes list of databases
 # Takes serialized argument (or optional serialization command?)
 
 sub new {
-    my SchwartzMan::Client $self = shift;
+    my Garivini::Client $self = shift;
     $self = fields::new($self) unless ref $self;
     my %args = @_;
 
-    $self->{dbd} = SchwartzMan::DB->new(%args);
+    $self->{dbd} = Garivini::DB->new(%args);
 
     return $self;
 }
