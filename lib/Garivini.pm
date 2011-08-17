@@ -1,6 +1,6 @@
 package Garivini;
 
-our $VERSION = '0.000';
+our $VERSION = '0.001';
 $VERSION = eval $VERSION;
 
 1;

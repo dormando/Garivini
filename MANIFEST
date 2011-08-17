@@ -11,3 +11,4 @@ lib/Garivini/DB.pm
 MANIFEST
 schema.sql
 Makefile.PL
+CHANGES
