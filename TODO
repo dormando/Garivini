@@ -8,3 +8,5 @@
 - Improve docs more? It's missing notes about DB scalability that it already
   does.
 - Add some ASCII charts to describe flow better.
+- Gearman::Server also needs batch job submission and batch job fetch
+  commands. Mainly batch submission would speed things up a lot.
