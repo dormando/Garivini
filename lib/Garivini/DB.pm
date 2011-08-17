@@ -6,14 +6,14 @@ Garivini::DB - Dumb utility for managing DB connections
 
 =head1 SYNOPSIS
 
-my $db = Garivini::DB->new(dbs => { 1 => { id => 1, dsn =>
-    'DBI:mysql:job:host=127.0.0.1', user => 'job',
-    pass => 'job' } });
+    my $db = Garivini::DB->new(dbs => { 1 => { id => 1, dsn =>
+        'DBI:mysql:job:host=127.0.0.1', user => 'job',
+        pass => 'job' } });
 
-my ($dbh, $id) = $db->get_dbh();
-[... execute ... ]
+    my ($dbh, $id) = $db->get_dbh();
+    [... execute ... ]
 
-my ($ret, $dbh, $dbid) = $db->do(1, "SELECT foo FROM bar");
+    my ($ret, $dbh, $dbid) = $db->do(1, "SELECT foo FROM bar");
 
 =head1 DESCRIPTION
 
