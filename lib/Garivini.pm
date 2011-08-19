@@ -77,7 +77,7 @@ See L<Garivini::Client> for more.
 
 =head1 UTILITIES
 
-Example utilities are provided in the source. A "Garivini" script shows how to
+Example utilities are provided in the source. A "garivini_workers" script shows how to
 start any of the workers.
 
 "gv_inject" shows an example client, running in either major mode.
